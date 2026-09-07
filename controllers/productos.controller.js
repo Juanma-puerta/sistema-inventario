@@ -1,10 +1,13 @@
-import pool from "../db.js";
-import {v4 as uuidv4} from 'uuid';
+import { crearProductoService, modificarProductoService } from "../services/productos.service.js";
+import { obtenerProductosService } from "../services/productos.service.js";
+import { obtenerProductoPorIDService } from "../services/productos.service.js";
+import { eliminarProductoService } from "../services/productos.service.js";
 
-export const obtenerProductos = async (req,res)=>{
+
+
+export const obtenerProductos = async (req,res, next)=>{
     try{
-        const resultado = await pool.query('SELECT * FROM productos');
-        res.status(200).json(resultado.rows);
+        res.status(200).json(await obtenerProductosService());
     }catch(error){
         next(error);
     }
@@ -36,35 +39,23 @@ export const crearProductos = async (req,res, next)=> {
         }else{
             return res.status(400).json("El tipo de dato es incorrecto. Por favor introduzca un número");
         };
-
-        nuevoProducto.id = uuidv4();
-
-        const valores =[
-            nuevoProducto.id,
-            nuevoProducto.nombre,
-            nuevoProducto.precio,
-            nuevoProducto.stock
-        ]; 
-        const instruccionSQL = 'INSERT INTO productos (id, nombre,precio, stock ) VALUES ($1, $2, $3, $4) RETURNING *';
-        const resultado = await pool.query(instruccionSQL, valores);
-        res.status(201).json(resultado.rows[0]);
+        const productoGuardado = await crearProductoService(nuevoProducto);
+        res.status(201).json(productoGuardado);
     }catch(error){
         next(error);
     };
 
 };
 
-export const obtenerProductoPorID = async (req, res)=>{
+export const obtenerProductoPorID = async (req, res, next)=>{
      try{
         const idBuscado = req.params.id;
-        const valor = [idBuscado];
-        const consultaSQL = 'SELECT * FROM productos WHERE id = $1';
-        const resultado = await pool.query(consultaSQL, valor);
-        if(resultado.rowCount === 0){
+        const resultado = await obtenerProductoPorIDService(idBuscado);
+        if(!resultado){
             res.status(404).json("error: Producto no encontrado");
 
         }else{
-            res.status(200).json(resultado.rows[0]);
+            res.status(200).json(resultado);
         };
 
     }catch(error){
@@ -74,13 +65,11 @@ export const obtenerProductoPorID = async (req, res)=>{
 
 };
 
-export const eliminarProducto = async (req,res)=>{
+export const eliminarProducto = async (req,res, next)=>{
      try{
         const idBuscado = req.params.id;
-        const consultaSQL = 'DELETE FROM productos WHERE id= $1';
-        const valor= [idBuscado];
-        const resultado= await pool.query(consultaSQL,valor);
-        if(resultado.rowCount === 0){
+        const resultado = eliminarProductoService(idBuscado);
+        if(!resultado){
             res.status(404).json("Error: no se ha encontrado un producto")
         }else{
             res.status(200).json("El producto ha sido eliminado correctamente")
@@ -91,21 +80,15 @@ export const eliminarProducto = async (req,res)=>{
 
 };
 
-export const modificarProducto = async (req,res)=>{
+export const modificarProducto = async (req,res,next)=>{
      try{
         const idBuscado = req.params.id;
         const datosNuevos = req.body;
-        const valores= [
-            datosNuevos.precio,
-            datosNuevos.stock,
-            idBuscado
-        ];
-        const consultaSQL= 'UPDATE productos SET precio= $1, stock= $2 WHERE id= $3 RETURNING *';
-        const resultado = await pool.query(consultaSQL,valores);
-        if(resultado.rowCount === 0){
+        const resultado = await modificarProductoService(idBuscado,datosNuevos);
+        if(!resultado){
             res.status(404).json("error: Producto no encontrado");
         }else{
-            res.status(200).json(resultado.rows[0]);
+            res.status(200).json(resultado);
         };
     }catch(error){
         next(error);
